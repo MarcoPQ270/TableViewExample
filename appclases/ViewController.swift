@@ -7,14 +7,19 @@
 //
 
 import UIKit
+import SQLite3
 
 class ViewController: UIViewController {
     
     var productos = [producto]()
+    var db: OpaquePointer?
     
     @IBOutlet weak var txtexisten: UITextField!
+    
     @IBOutlet weak var txtnom: UITextField!
+    
     @IBOutlet weak var txtclave: UITextField!
+    
     @IBAction func btnagregar(_ sender: UIButton) {
         
         let clave =
@@ -26,23 +31,41 @@ class ViewController: UIViewController {
         let existe =
             txtexisten.text?.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        if(clave?.isEmpty)!{
-            showAlerta(titulo: "Error", mensaje: "Caja vacia")
-            txtclave.becomeFirstResponder()
-            return
-        }
+        //if(clave?.isEmpty)!{
+          //  showAlerta(titulo: "Error", mensaje: "Caja vacia")
+            //txtclave.becomeFirstResponder()
+           // return
+        //}
         
         if(nom?.isEmpty)!{
-            showAlerta(titulo: "Error", mensaje: "Caja vacia")
+            showAlerta(titulo: "Error", mensaje: "El nombre esta vacio")
             txtnom.becomeFirstResponder()
             return
         }
         
         if(existe?.isEmpty)!{
-            showAlerta(titulo: "Error", mensaje: "Caja vacia")
+            showAlerta(titulo: "Error", mensaje: "La existencia esta vacia")
             txtexisten.becomeFirstResponder()
             return
         }
+        
+        let nombr : NSString = nom! as NSString
+        let existen : Int32 = Int32(existe!) as! Int32
+        var stmt: OpaquePointer?
+        let sentencia = "INSERT INTO Producto(nomProducto, existencia) values (?,?)"
+        if sqlite3_prepare(db, sentencia, -1, &stmt, nil) == SQLITE_OK{
+            sqlite3_bind_text(stmt, 1, nombr.utf8String, -1, nil)
+            sqlite3_bind_int(stmt, 2, existen)
+        }
+        if sqlite3_step(stmt) != SQLITE_DONE{
+            let errmsg = String(cString: sqlite3_errmsg(db)!)
+            showAlerta(titulo: "Error al insertar", mensaje: errmsg)
+            return
+        }
+        
+        
+        
+        
         productos.append(producto(idprod: clave!, nomProd: nom!, existen: existe!))
         txtclave.text=""
         txtnom.text=""
@@ -67,14 +90,29 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        let fileURL = try! FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        .appendingPathComponent("ProductosDatabase.sqlite")
+        if sqlite3_open(fileURL.path, &db) != SQLITE_OK {
+            
+            showAlerta(titulo: "Base de datos", mensaje: "error al abrir base de datos")
+            
+        }
+        if sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS producto(idProducto INTEGER PRIMARY KEY AUTOINCREMENT, nomProducto TEXT, existencia INTEGER)", nil, nil, nil) != SQLITE_OK {
+            
+            let errmsg = String(cString: sqlite3_errmsg(db)!)
+            showAlerta(titulo: "Error al crear la tabla", mensaje: errmsg)
+            
+        }
+        
+        txtclave.becomeFirstResponder()
+        
     }
+    
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if(segue.identifier=="push"){
             let tablesegue=segue.destination as! TableViewController
             tablesegue.productos=productos
         }
     }
-
 }
 
