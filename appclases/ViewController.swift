@@ -74,7 +74,20 @@ class ViewController: UIViewController {
     }
     
     @IBAction func btnconsultar(_ sender: UIButton) {
-        
+        productos.removeAll()
+        let query="select idProducto, nomProducto, existencia from Producto Order by nomProducto"
+        var stmt : OpaquePointer?
+        if (sqlite3_prepare(db,query, -1, &stmt,nil) != SQLITE_OK){
+            let errmsg = String(cString: sqlite3_errmsg(db)!)
+            showAlerta(titulo: "Error al consultar", mensaje: errmsg)
+            return
+    }
+        while(sqlite3_step(stmt) == SQLITE_ROW){
+            let idp = String(sqlite3_column_int(stmt, 0))
+            let nom = String(cString: sqlite3_column_text(stmt,1))
+            let exi = String(sqlite3_column_int(stmt, 2))
+            productos.append(producto(idprod: idp, nomProd: nom, existen: exi))
+        }
     }
     
     func showAlerta(titulo: String, mensaje: String){
